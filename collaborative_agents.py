@@ -15,13 +15,13 @@ from collaborative_tools import (
 from dotenv import load_dotenv
 import logging
 from agent_communication import comm_hub
+from logging_config import get_logger, log_safe
 
 # Load environment variables
 load_dotenv()
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # Initialize Gemini LLM
 gemini_llm = LLM(
@@ -385,13 +385,13 @@ def setup_collaboration_environment():
 
     for directory in directories:
         os.makedirs(directory, exist_ok=True)
-        logger.info(f"Created directory: {directory}")
+        log_safe(logger, "info", f"Created directory: {directory}")
 
     # FIX: Use comm_hub.initialize_communication_file() instead of manual JSON creation
     # This ensures proper structure and consistency with the communication hub
     comm_hub.initialize_communication_file()
 
-    logger.info("Collaborative environment setup complete!")
+    log_safe(logger, "info", "Collaborative environment setup complete!")
 
 def run_collaborative_development():
     """Run the collaborative development process"""

@@ -11,8 +11,9 @@ from typing import Dict, List, Any
 import threading
 import logging
 import uuid
+from logging_config import get_logger, log_safe
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 class AgentCommunicationHub:
     """Central hub for agent-to-agent communication and coordination"""
@@ -56,7 +57,7 @@ class AgentCommunicationHub:
                         if key not in existing_data:
                             existing_data[key] = default_value
                             updated = True
-                            logger.info(f"Added missing key '{key}' to communication file")
+                            log_safe(logger, "info", f"Added missing key '{key}' to communication file")
 
                     # Only write back if we added missing keys
                     if updated:
@@ -65,7 +66,7 @@ class AgentCommunicationHub:
                         f.truncate()
 
             except Exception as e:
-                logger.error(f"Error reading communication file, recreating: {e}")
+                log_safe(logger, "error", f"Error reading communication file, recreating: {e}")
                 # If file is corrupted, recreate it
                 with open(self.communication_file, 'w') as f:
                     json.dump(required_keys, f, indent=2)
@@ -99,10 +100,10 @@ class AgentCommunicationHub:
                 data["communications"].append(communication)
                 self._write_data(data)
 
-                logger.info(f"📨 {from_agent} → {to_agent}: {message[:50]}...")
+                log_safe(logger, "info", f"[MESSAGE] {from_agent} -> {to_agent}: {message[:50]}...")
 
             except Exception as e:
-                logger.error(f"Error sending message: {e}")
+                log_safe(logger, "error", f"Error sending message: {e}")
     
     def get_messages(self, agent_name: str, unread_only: bool = True) -> List[Dict]:
         """Get messages for a specific agent"""
@@ -118,7 +119,7 @@ class AgentCommunicationHub:
                 return messages
 
             except Exception as e:
-                logger.error(f"Error getting messages: {e}")
+                log_safe(logger, "error", f"Error getting messages: {e}")
                 return []
     
     def mark_message_read(self, message_id: str):
@@ -135,7 +136,7 @@ class AgentCommunicationHub:
                 self._write_data(data)
 
             except Exception as e:
-                logger.error(f"Error marking message read: {e}")
+                log_safe(logger, "error", f"Error marking message read: {e}")
     
     def update_status(self, agent_name: str, status: str, details: Dict = None):
         """Update agent status"""
@@ -158,10 +159,10 @@ class AgentCommunicationHub:
 
                 self._write_data(data)
 
-                logger.info(f"📊 {agent_name} status: {status}")
+                log_safe(logger, "info", f"[CHART] {agent_name} status: {status}")
 
             except Exception as e:
-                logger.error(f"Error updating status: {e}")
+                log_safe(logger, "error", f"Error updating status: {e}")
     
     def get_agent_status(self, agent_name: str = None) -> List[Dict]:
         """Get status updates for specific agent or all agents"""
@@ -178,7 +179,7 @@ class AgentCommunicationHub:
                     return data["status_updates"]
 
             except Exception as e:
-                logger.error(f"Error getting status: {e}")
+                log_safe(logger, "error", f"Error getting status: {e}")
                 return []
     
     def update_shared_context(self, key: str, value: Any):
@@ -189,10 +190,10 @@ class AgentCommunicationHub:
                 data["shared_context"][key] = value
                 self._write_data(data)
 
-                logger.info(f"🔄 Updated shared context: {key}")
+                log_safe(logger, "info", f"[REFRESH] Updated shared context: {key}")
 
             except Exception as e:
-                logger.error(f"Error updating shared context: {e}")
+                log_safe(logger, "error", f"Error updating shared context: {e}")
     
     def get_shared_context(self, key: str = None):
         """Get shared context"""
@@ -206,7 +207,7 @@ class AgentCommunicationHub:
                     return data["shared_context"]
 
             except Exception as e:
-                logger.error(f"Error getting shared context: {e}")
+                log_safe(logger, "error", f"Error getting shared context: {e}")
                 return None
     
     def request_file_lock(self, agent_name: str, file_path: str) -> bool:
@@ -227,11 +228,11 @@ class AgentCommunicationHub:
                 with open(self.communication_file, 'w') as f:
                     json.dump(data, f, indent=2)
                 
-                logger.info(f"🔒 {agent_name} locked file: {file_path}")
+                log_safe(logger, "info", f"[LOCK] {agent_name} locked file: {file_path}")
                 return True
-                
+
             except Exception as e:
-                logger.error(f"Error requesting file lock: {e}")
+                log_safe(logger, "error", f"Error requesting file lock: {e}")
                 return False
     
     def release_file_lock(self, agent_name: str, file_path: str):
@@ -247,10 +248,10 @@ class AgentCommunicationHub:
                     with open(self.communication_file, 'w') as f:
                         json.dump(data, f, indent=2)
 
-                    logger.info(f"🔓 {agent_name} released file: {file_path}")
+                    log_safe(logger, "info", f"[UNLOCK] {agent_name} released file: {file_path}")
 
             except Exception as e:
-                logger.error(f"Error releasing file lock: {e}")
+                log_safe(logger, "error", f"Error releasing file lock: {e}")
 
 
 
@@ -271,11 +272,11 @@ class AgentCommunicationHub:
                 }
 
                 self._write_data(data)
-                logger.info(f"🔒 {agent_name} acquired lock for: {file_path}")
+                log_safe(logger, "info", f"[LOCK] {agent_name} acquired lock for: {file_path}")
                 return True
 
             except Exception as e:
-                logger.error(f"Error acquiring lock: {e}")
+                log_safe(logger, "error", f"Error acquiring lock: {e}")
                 return False
 
     def get_lock_holder(self, file_path: str) -> str:
@@ -290,7 +291,7 @@ class AgentCommunicationHub:
                     return "No one"
 
             except Exception as e:
-                logger.error(f"Error getting lock holder: {e}")
+                log_safe(logger, "error", f"Error getting lock holder: {e}")
                 return "Unknown"
 
     def report_integration_point(self, agent_name: str, component: str, interface: Dict):
@@ -309,10 +310,10 @@ class AgentCommunicationHub:
                 data["integration_points"].append(integration_point)
                 self._write_data(data)
 
-                logger.info(f"🔗 {agent_name} reported integration point: {component}")
+                log_safe(logger, "info", f"[LINK] {agent_name} reported integration point: {component}")
 
             except Exception as e:
-                logger.error(f"Error reporting integration point: {e}")
+                log_safe(logger, "error", f"Error reporting integration point: {e}")
 
 # Global communication hub instance
 comm_hub = AgentCommunicationHub()
