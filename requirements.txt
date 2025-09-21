@@ -1,8 +1,8 @@
 # CrewAI Idle Game Development Requirements
 
 # Core CrewAI and AI dependencies
-crewai>=0.28.0
-crewai-tools>=0.1.6
+crewai>=0.193.0
+crewai-tools>=0.73.0
 langchain-google-genai>=1.0.1
 google-generativeai>=0.3.2
 
@@ -15,8 +15,12 @@ Pillow>=10.0.0
 pygame>=2.5.0
 
 # Data handling and serialization
-pydantic>=2.0.0
+# CRITICAL: Use compatible pydantic version for chromadb
+pydantic>=2.0.0,<3.0.0
 pydantic-settings>=2.0.0
+
+# ChromaDB with compatible version
+chromadb>=0.4.24,<0.6.0
 
 # Logging and utilities
 colorlog>=6.7.0

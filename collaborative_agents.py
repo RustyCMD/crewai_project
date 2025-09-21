@@ -360,6 +360,10 @@ def create_collaborative_crew():
         manager_llm=gemini_llm,  # LLM for the manager agent in hierarchical process
         verbose=True,
         memory=True,  # Enable shared memory for collaboration
+        embedder={
+            "provider": "google-generativeai",
+            "api_key": os.getenv("GEMINI_API_KEY")
+        },
         max_rpm=4000,  # High rate limit for parallel execution
         share_crew=True,  # Enable crew sharing for inter-agent communication
         step_callback=lambda step: logger.info(f"Collaborative Step: {step}"),

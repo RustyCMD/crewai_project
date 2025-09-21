@@ -30,7 +30,11 @@ def create_idle_game_crew():
         tasks=[architecture_task, features_task, testing_task, deployment_task],
         process=Process.sequential,
         verbose=True,
-        memory=True
+        memory=True,  # Re-enabled with Gemini embeddings
+        embedder={
+            "provider": "google-generativeai",
+            "api_key": os.getenv("GEMINI_API_KEY")
+        }
     )
 
     return idle_game_crew
