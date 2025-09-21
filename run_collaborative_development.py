@@ -39,10 +39,11 @@ def print_banner():
     
     👥 DEVELOPMENT TEAM:
     ├── 🎨 Frontend Developer Agent    - UI/GUI Components & Visual Design
-    ├── ⚙️  Backend Developer Agent     - Core Logic & Systems Architecture  
+    ├── ⚙️  Backend Developer Agent     - Core Logic & Systems Architecture
     ├── 🔗 Integration Developer Agent - Coordination & Dependency Management
-    ├── 🧪 Quality Assurance Agent     - Testing & Code Quality
-    └── ⚡ Performance Engineer Agent  - Optimization & Performance Monitoring
+    ├── 🧪 QA Engineer Agent           - Testing & Code Quality
+    ├── ⚡ Performance Engineer Agent  - Optimization & Performance Monitoring
+    └── 🔒 File Lock Manager Agent     - File Access Coordination & Conflict Prevention
     
     🚀 FEATURES:
     ├── ⚡ Parallel Execution (Process.hierarchical)

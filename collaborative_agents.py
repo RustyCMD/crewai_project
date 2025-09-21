@@ -113,7 +113,7 @@ integration_agent = Agent(
 
 # Quality Assurance Agent
 qa_agent = Agent(
-    role='Quality Assurance Engineer',
+    role='QA Engineer',
     goal='Continuously test components, provide feedback to developers, and ensure code quality throughout development',
     backstory="""You are a QA engineer who works in parallel with development, providing real-time feedback
     and testing. You collaborate closely with all developers, running tests as they develop, identifying
@@ -138,6 +138,22 @@ performance_agent = Agent(
     tools=collaborative_tools,
     llm=gemini_llm,
     max_iter=6,
+    memory=True
+)
+
+# File Lock Manager Agent
+file_lock_manager_agent = Agent(
+    role='File Lock Manager',
+    goal='Manage file access coordination, prevent conflicts, and ensure safe concurrent file operations across all agents',
+    backstory="""You are a specialized file coordination agent responsible for managing concurrent file access
+    in the collaborative development environment. You prevent file conflicts by coordinating file locks,
+    managing access permissions, and ensuring data integrity when multiple agents need to work with the same files.
+    You monitor file access patterns and proactively resolve potential conflicts before they occur.""",
+    verbose=True,
+    allow_delegation=True,
+    tools=collaborative_tools,
+    llm=gemini_llm,
+    max_iter=8,
     memory=True
 )
 
@@ -299,9 +315,37 @@ def create_collaborative_tasks():
         agent=performance_agent
     )
 
+    # File Lock Manager Task
+    file_lock_task = Task(
+        description="""Manage file access coordination and prevent conflicts during collaborative development.
 
+        COLLABORATION REQUIREMENTS:
+        - Monitor file access requests from all agents
+        - Coordinate file locking to prevent concurrent write conflicts
+        - Resolve file access conflicts when they occur
+        - Maintain file access logs and audit trails
+        - Ensure data integrity during concurrent operations
 
-    return [frontend_task, backend_task, integration_task, qa_task, performance_task]
+        DELIVERABLES (create in Game/file_management/):
+        - Game/file_management/lock_manager.py: Core file locking system
+        - Game/file_management/conflict_resolver.py: Conflict detection and resolution
+        - Game/file_management/access_coordinator.py: File access coordination
+        - Game/file_management/audit_logger.py: File access logging and auditing
+
+        COMMUNICATION PROTOCOL:
+        - Monitor all agent file access requests
+        - Immediately coordinate file locks when conflicts detected
+        - Notify agents of file access permissions and restrictions
+        - Maintain real-time file access status""",
+        expected_output="""File lock management system with:
+        - Comprehensive file locking and coordination
+        - Conflict detection and resolution mechanisms
+        - File access audit trails and logging
+        - Real-time coordination with all development agents""",
+        agent=file_lock_manager_agent
+    )
+
+    return [frontend_task, backend_task, integration_task, qa_task, performance_task, file_lock_task]
 
 def create_collaborative_crew():
     """Create the collaborative crew with hierarchical process for parallel execution"""
@@ -310,7 +354,7 @@ def create_collaborative_crew():
 
     # Create crew with hierarchical process for parallel execution
     collaborative_crew = Crew(
-        agents=[frontend_agent, backend_agent, integration_agent, qa_agent, performance_agent],
+        agents=[frontend_agent, backend_agent, integration_agent, qa_agent, performance_agent, file_lock_manager_agent],
         tasks=tasks,
         process=Process.hierarchical,  # Enables parallel execution with coordination
         manager_llm=gemini_llm,  # LLM for the manager agent in hierarchical process
@@ -334,6 +378,7 @@ def setup_collaboration_environment():
         "Game/integration",
         "Game/qa",
         "Game/performance",
+        "Game/file_management",
         "Game/shared",
         "Game/docs"
     ]
