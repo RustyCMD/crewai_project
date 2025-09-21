@@ -6,9 +6,9 @@ from crewai_tools import CodeDocsSearchTool, FileReadTool, FileWriterTool
 from dotenv import load_dotenv
 load_dotenv()
 
-# Initialize Gemini 2.0 Flash-Lite LLM
+# Initialize Gemini 2.5 Flash-Lite LLM
 gemini_llm = LLM(
-    model="gemini/gemini-2.0-flash-lite",
+    model="gemini/gemini-2.5-flash-lite",
     api_key=os.getenv("GEMINI_API_KEY"),
     temperature=0.7,
     max_tokens=8192
@@ -20,7 +20,7 @@ code_search_tool = CodeDocsSearchTool(
         llm=dict(
             provider="google-generativeai",
             config=dict(
-                model="gemini/gemini-2.0-flash-lite",
+                model="gemini/gemini-2.5-flash-lite",
                 api_key=os.getenv("GEMINI_API_KEY"),
                 temperature=0.7,
             ),
@@ -49,6 +49,6 @@ junior_agent = Agent(
     allow_delegation=False,
     llm=gemini_llm,
     tools=[code_search_tool, file_read_tool, file_writer_tool],
-    max_iter=3,
+    max_iter=25,
     memory=True
 )

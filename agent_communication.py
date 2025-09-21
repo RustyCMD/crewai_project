@@ -252,98 +252,47 @@ class AgentCommunicationHub:
             except Exception as e:
                 logger.error(f"Error releasing file lock: {e}")
 
-    def request_file_lock_with_approval(self, agent_name: str, file_path: str, timeout: int = 30) -> dict:
-        """Request file lock and wait for File Lock Manager approval"""
-        import time
 
-        request_id = f"{agent_name}_{file_path}_{int(time.time())}"
 
-        # Part 1: Create the request (with lock)
-        try:
-            with self.lock:
+    def acquire_lock(self, agent_name: str, file_path: str) -> bool:
+        """Simplified lock acquisition - returns True if lock acquired, False if already locked"""
+        with self.lock:
+            try:
                 data = self._read_data()
 
                 # Check if file is already locked
                 if file_path in data["file_locks"]:
-                    return {"approved": False, "reason": f"File already locked by {data['file_locks'][file_path]['agent']}"}
+                    return False  # File is already locked
 
-                # Create lock request
-                lock_request = {
-                    "id": request_id,
+                # Acquire the lock
+                data["file_locks"][file_path] = {
                     "agent": agent_name,
-                    "file_path": file_path,
-                    "timestamp": datetime.now().isoformat(),
-                    "status": "pending"
+                    "timestamp": datetime.now().isoformat()
                 }
 
-                data["file_lock_requests"].append(lock_request)
                 self._write_data(data)
+                logger.info(f"🔒 {agent_name} acquired lock for: {file_path}")
+                return True
 
-            # FIX: Send message OUTSIDE the lock to prevent deadlock
-            self.send_message(
-                agent_name,
-                "File Lock Manager",
-                f"REQUEST_FILE_LOCK:{request_id}:{file_path}",
-                "file_lock_request"
-            )
+            except Exception as e:
+                logger.error(f"Error acquiring lock: {e}")
+                return False
 
-            logger.info(f"🔒 {agent_name} requested lock for: {file_path}")
-
-        except Exception as e:
-            logger.error(f"Error requesting file lock: {e}")
-            return {"approved": False, "reason": f"Error creating request: {e}"}
-
-        # Part 2: Wait for approval (with proper locking)
-        start_time = time.time()
-        while time.time() - start_time < timeout:
-            with self.lock:  # FIX: Lock the entire check-and-update logic
-                try:
-                    data = self._read_data()
-
-                    # Check if request was processed
-                    for request in data["file_lock_requests"]:
-                        if request["id"] == request_id:
-                            if request["status"] == "approved":
-                                # Lock was approved, create the actual lock
-                                data["file_locks"][file_path] = {
-                                    "agent": agent_name,
-                                    "timestamp": datetime.now().isoformat(),
-                                    "request_id": request_id
-                                }
-
-                                # Remove the request
-                                data["file_lock_requests"] = [r for r in data["file_lock_requests"] if r["id"] != request_id]
-                                self._write_data(data)
-
-                                logger.info(f"✅ {agent_name} got approved lock for: {file_path}")
-                                return {"approved": True, "reason": "Approved by File Lock Manager"}
-
-                            elif request["status"] == "denied":
-                                # Remove the request
-                                data["file_lock_requests"] = [r for r in data["file_lock_requests"] if r["id"] != request_id]
-                                self._write_data(data)
-
-                                return {"approved": False, "reason": request.get("denial_reason", "Denied by File Lock Manager")}
-                            break  # Found our request, no need to continue loop
-
-                except Exception as e:
-                    logger.error(f"Error checking lock approval: {e}")
-
-            time.sleep(0.5)  # Check every 500ms
-
-        # Part 3: Timeout - clean up request (with proper locking)
-        with self.lock:  # FIX: Lock the cleanup logic
+    def get_lock_holder(self, file_path: str) -> str:
+        """Get the name of the agent holding the lock for a file"""
+        with self.lock:
             try:
                 data = self._read_data()
-                # Check if request is still there before modifying
-                if any(r["id"] == request_id for r in data["file_lock_requests"]):
-                    data["file_lock_requests"] = [r for r in data["file_lock_requests"] if r["id"] != request_id]
-                    self._write_data(data)
-            except Exception:
-                pass  # Ignore errors on cleanup
 
-        return {"approved": False, "reason": "Timeout waiting for File Lock Manager approval"}
-    
+                if file_path in data["file_locks"]:
+                    return data["file_locks"][file_path]["agent"]
+                else:
+                    return "No one"
+
+            except Exception as e:
+                logger.error(f"Error getting lock holder: {e}")
+                return "Unknown"
+
     def report_integration_point(self, agent_name: str, component: str, interface: Dict):
         """Report an integration point for coordination"""
         with self.lock:

@@ -10,8 +10,7 @@ from collaborative_tools import (
     collaborative_file_writer,
     team_communication,
     integration_coordinator,
-    project_status,
-    file_lock_manager
+    project_status
 )
 from dotenv import load_dotenv
 import logging
@@ -26,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 # Initialize Gemini LLM
 gemini_llm = LLM(
-    model="gemini/gemini-2.0-flash-lite",
+    model="gemini/gemini-2.5-flash-lite",
     api_key=os.getenv("GEMINI_API_KEY"),
     temperature=0.7,
     max_tokens=8192
@@ -42,13 +41,7 @@ collaborative_tools = [
     DirectorySearchTool()
 ]
 
-# File Lock Manager tools (only for the File Lock Manager agent)
-file_lock_manager_tools = [
-    file_lock_manager,
-    team_communication,
-    project_status,
-    FileReadTool()
-]
+
 
 class CollaborativeAgentManager:
     """Manages collaborative agent communication and coordination"""
@@ -148,21 +141,7 @@ performance_agent = Agent(
     memory=True
 )
 
-# File Lock Manager Agent
-file_lock_manager_agent = Agent(
-    role='File Lock Manager',
-    goal='Manage file access permissions, approve/deny file lock requests, and prevent file conflicts',
-    backstory="""You are the File Lock Manager responsible for coordinating file access between all development agents.
-    Your job is to review file lock requests, approve them when safe, and deny them when there would be conflicts.
-    You work quickly to prevent development bottlenecks while ensuring file integrity. You approve requests that
-    make sense and deny conflicting requests with clear explanations.""",
-    verbose=True,
-    allow_delegation=False,
-    tools=file_lock_manager_tools,
-    llm=gemini_llm,
-    max_iter=5,
-    memory=True
-)
+
 
 def create_collaborative_tasks():
     """Create interconnected tasks that require real-time collaboration"""
@@ -320,38 +299,9 @@ def create_collaborative_tasks():
         agent=performance_agent
     )
 
-    # File Lock Manager Task
-    file_lock_task = Task(
-        description="""Manage file access permissions and coordinate file locks between all development agents.
 
-        RESPONSIBILITIES:
-        - Monitor file lock requests from all agents
-        - Approve file lock requests when safe (no conflicts)
-        - Deny conflicting requests with clear explanations
-        - Maintain file access coordination to prevent deadlocks
-        - Respond quickly to prevent development bottlenecks
 
-        WORKFLOW:
-        1. Continuously monitor for file lock requests using file_lock_manager tool
-        2. Review each request for potential conflicts
-        3. Approve non-conflicting requests immediately
-        4. Deny conflicting requests with clear reasons
-        5. Use approve_all for batch approvals when safe
-
-        COMMUNICATION PROTOCOL:
-        - Check for new requests every 30 seconds
-        - Approve requests within 1 minute when possible
-        - Send clear denial reasons for rejected requests
-        - Coordinate with Integration Agent on complex conflicts""",
-        expected_output="""File lock management system with:
-        - All file lock requests processed
-        - Clear approval/denial decisions
-        - No development bottlenecks from file access
-        - Coordination logs with all agents""",
-        agent=file_lock_manager_agent
-    )
-
-    return [frontend_task, backend_task, integration_task, qa_task, performance_task, file_lock_task]
+    return [frontend_task, backend_task, integration_task, qa_task, performance_task]
 
 def create_collaborative_crew():
     """Create the collaborative crew with hierarchical process for parallel execution"""
@@ -360,7 +310,7 @@ def create_collaborative_crew():
 
     # Create crew with hierarchical process for parallel execution
     collaborative_crew = Crew(
-        agents=[frontend_agent, backend_agent, integration_agent, qa_agent, performance_agent, file_lock_manager_agent],
+        agents=[frontend_agent, backend_agent, integration_agent, qa_agent, performance_agent],
         tasks=tasks,
         process=Process.hierarchical,  # Enables parallel execution with coordination
         manager_llm=gemini_llm,  # LLM for the manager agent in hierarchical process

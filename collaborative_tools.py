@@ -14,21 +14,17 @@ import logging
 logger = logging.getLogger(__name__)
 
 class CollaborativeFileWriterTool(BaseTool):
-    """File writer with collaboration features"""
+    """Simplified file writer with basic collaboration features"""
     name: str = "collaborative_file_writer"
-    description: str = "Write files with collaboration awareness, conflict detection, and team notifications"
-    
-    def _run(self, file_path: str, content: str, agent_name: str = "Frontend Developer") -> str:
-        """Write file with collaboration features"""
-        lock_acquired = False
-        try:
-            # Request file lock and wait for approval
-            lock_result = comm_hub.request_file_lock_with_approval(agent_name, file_path)
-            if not lock_result["approved"]:
-                return f"❌ File lock request denied: {lock_result['reason']}"
+    description: str = "Write files with collaboration awareness and team notifications"
 
-            # FIX: Track lock acquisition to ensure cleanup in finally block
-            lock_acquired = True
+    def _run(self, file_path: str, content: str, agent_name: str = "Frontend Developer") -> str:
+        """Write file with simplified collaboration features"""
+        try:
+            # Simple lock acquisition using the new simplified method
+            if not comm_hub.acquire_lock(agent_name, file_path):
+                lock_holder = comm_hub.get_lock_holder(file_path)
+                return f"❌ File is currently locked by {lock_holder}. Please try again later."
 
             # Check if file exists and notify other agents
             file_exists = os.path.exists(file_path)
@@ -59,20 +55,22 @@ class CollaborativeFileWriterTool(BaseTool):
                 "action": "created" if not file_exists else "modified"
             })
 
+            # Release the lock immediately after writing
+            comm_hub.release_file_lock(agent_name, file_path)
+
             logger.info(f"✅ {agent_name} successfully wrote {file_path}")
             return f"✅ Successfully wrote {file_path}. Team has been notified."
 
         except Exception as e:
+            # Ensure lock is released even on error
+            try:
+                comm_hub.release_file_lock(agent_name, file_path)
+            except:
+                pass  # Ignore errors during cleanup
+
             error_msg = f"❌ Error writing {file_path}: {str(e)}"
             logger.error(error_msg)
             return error_msg
-        finally:
-            # FIX: Always release file lock in finally block to prevent deadlocks
-            if lock_acquired:
-                try:
-                    comm_hub.release_file_lock(agent_name, file_path)
-                except Exception as e:
-                    logger.error(f"❌ Error releasing file lock for {file_path}: {str(e)}")
 
 class TeamCommunicationTool(BaseTool):
     """Tool for inter-agent communication"""
@@ -219,107 +217,7 @@ class IntegrationCoordinatorTool(BaseTool):
             logger.error(error_msg)
             return error_msg
 
-class FileLockManagerTool(BaseTool):
-    name: str = "file_lock_manager"
-    description: str = "Manage file lock requests - approve or deny file access for other agents"
 
-    def _run(self, action: str, request_id: str = None, reason: str = None) -> str:
-        """Manage file lock requests"""
-        try:
-            from datetime import datetime
-
-            # FIX: Use proper locking to prevent race conditions
-            with comm_hub.lock:
-                data = comm_hub._read_data()
-
-                if action == "list_requests":
-                    pending_requests = [r for r in data["file_lock_requests"] if r["status"] == "pending"]
-                    if not pending_requests:
-                        return "📋 No pending file lock requests"
-
-                    result = "📋 Pending File Lock Requests:\n"
-                    for i, request in enumerate(pending_requests, 1):
-                        result += f"{i}. {request['agent']} wants {request['file_path']} (ID: {request['id']})\n"
-                    return result
-
-                elif action == "approve" and request_id:
-                    # Find and approve the request
-                    for request in data["file_lock_requests"]:
-                        if request["id"] == request_id and request["status"] == "pending":
-                            request["status"] = "approved"
-                            request["approval_time"] = datetime.now().isoformat()
-                            comm_hub._write_data(data)
-
-                            # Send approval message outside the lock
-                            comm_hub.send_message(
-                                "File Lock Manager",
-                                request["agent"],
-                                f"File lock approved for {request['file_path']}",
-                                "file_lock_approval"
-                            )
-
-                            logger.info(f"✅ File Lock Manager approved {request['agent']} for {request['file_path']}")
-                            return f"✅ Approved file lock for {request['agent']} on {request['file_path']}"
-
-                    return f"❌ Request {request_id} not found or already processed"
-
-                elif action == "deny" and request_id:
-                    # Find and deny the request
-                    for request in data["file_lock_requests"]:
-                        if request["id"] == request_id and request["status"] == "pending":
-                            request["status"] = "denied"
-                            request["denial_reason"] = reason or "Denied by File Lock Manager"
-                            request["denial_time"] = datetime.now().isoformat()
-                            comm_hub._write_data(data)
-
-                            # Send denial message outside the lock
-                            comm_hub.send_message(
-                                "File Lock Manager",
-                                request["agent"],
-                                f"File lock denied for {request['file_path']}: {request['denial_reason']}",
-                                "file_lock_denial"
-                            )
-
-                            logger.info(f"❌ File Lock Manager denied {request['agent']} for {request['file_path']}")
-                            return f"❌ Denied file lock for {request['agent']} on {request['file_path']}: {request['denial_reason']}"
-
-                    return f"❌ Request {request_id} not found or already processed"
-
-                elif action == "approve_all":
-                    approved_count = 0
-                    approved_requests = []
-
-                    for request in data["file_lock_requests"]:
-                        if request["status"] == "pending":
-                            request["status"] = "approved"
-                            request["approval_time"] = datetime.now().isoformat()
-                            approved_count += 1
-                            approved_requests.append(request)
-
-                    if approved_count > 0:
-                        comm_hub._write_data(data)
-
-                        # Send approval messages outside the lock
-                        for request in approved_requests:
-                            comm_hub.send_message(
-                                "File Lock Manager",
-                                request["agent"],
-                                f"File lock approved for {request['file_path']}",
-                                "file_lock_approval"
-                            )
-
-                        logger.info(f"✅ File Lock Manager approved {approved_count} requests")
-                        return f"✅ Approved {approved_count} file lock requests"
-                    else:
-                        return "📋 No pending requests to approve"
-
-                else:
-                    return "❌ Invalid action. Use: list_requests, approve, deny, or approve_all"
-
-        except Exception as e:
-            error_msg = f"❌ Error managing file locks: {str(e)}"
-            logger.error(error_msg)
-            return error_msg
 
 class ProjectStatusTool(BaseTool):
     """Tool for checking project status and team progress"""
@@ -395,4 +293,3 @@ collaborative_file_writer = CollaborativeFileWriterTool()
 team_communication = TeamCommunicationTool()
 integration_coordinator = IntegrationCoordinatorTool()
 project_status = ProjectStatusTool()
-file_lock_manager = FileLockManagerTool()
