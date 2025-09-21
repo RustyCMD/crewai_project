@@ -115,49 +115,7 @@ class CollaborationDashboard:
 
         # Tab 4: File System
         self.create_filesystem_tab()
-        
-        # Left panel - Agent Status
-        left_frame = ttk.Frame(main_frame, style='Dark.TFrame')
-        left_frame.pack(side='left', fill='both', expand=True, padx=5)
-        
-        ttk.Label(left_frame, text="👥 Agent Status", style='Header.TLabel').pack(pady=5)
-        
-        self.agent_status_frame = ttk.Frame(left_frame, style='Dark.TFrame')
-        self.agent_status_frame.pack(fill='both', expand=True, pady=5)
-        
-        # Right panel - Communications
-        right_frame = ttk.Frame(main_frame, style='Dark.TFrame')
-        right_frame.pack(side='right', fill='both', expand=True, padx=5)
-        
-        ttk.Label(right_frame, text="💬 Team Communications", style='Header.TLabel').pack(pady=5)
-        
-        self.comm_text = scrolledtext.ScrolledText(right_frame, 
-                                                  height=15, 
-                                                  bg='#1e1e1e', 
-                                                  fg='#ffffff',
-                                                  font=('Consolas', 9))
-        self.comm_text.pack(fill='both', expand=True, pady=5)
-        
-        # Bottom panel - File Status and Integration
-        bottom_frame = ttk.Frame(self.root, style='Dark.TFrame')
-        bottom_frame.pack(fill='x', padx=10, pady=5)
-        
-        # File locks section
-        file_frame = ttk.Frame(bottom_frame, style='Dark.TFrame')
-        file_frame.pack(side='left', fill='both', expand=True, padx=5)
-        
-        ttk.Label(file_frame, text="🔒 File Locks", style='Header.TLabel').pack()
-        self.file_locks_text = tk.Text(file_frame, height=6, bg='#1e1e1e', fg='#ffff00', font=('Consolas', 8))
-        self.file_locks_text.pack(fill='both', expand=True)
-        
-        # Integration points section
-        integration_frame = ttk.Frame(bottom_frame, style='Dark.TFrame')
-        integration_frame.pack(side='right', fill='both', expand=True, padx=5)
-        
-        ttk.Label(integration_frame, text="🔗 Integration Points", style='Header.TLabel').pack()
-        self.integration_text = tk.Text(integration_frame, height=6, bg='#1e1e1e', fg='#00ffff', font=('Consolas', 8))
-        self.integration_text.pack(fill='both', expand=True)
-        
+
         # Status bar
         self.status_bar = ttk.Label(self.root, text="🔄 Monitoring collaborative development...", style='Status.TLabel')
         self.status_bar.pack(side='bottom', fill='x', pady=2)
@@ -635,102 +593,130 @@ class CollaborationDashboard:
     
     def update_agent_status(self):
         """Update agent status display"""
-        # Clear existing status widgets
-        for widget in self.agent_status_frame.winfo_children():
-            widget.destroy()
-        
-        if not self.agent_status:
-            ttk.Label(self.agent_status_frame, text="⏳ Waiting for agents to start...", style='Status.TLabel').pack()
-            return
-        
-        for agent, info in self.agent_status.items():
-            agent_frame = ttk.Frame(self.agent_status_frame, style='Dark.TFrame', relief='ridge')
-            agent_frame.pack(fill='x', pady=2, padx=5)
-            
-            # Agent name and status
-            status_text = f"🤖 {agent}"
-            ttk.Label(agent_frame, text=status_text, style='Header.TLabel').pack(anchor='w')
-            
-            status_text = f"Status: {info['status']}"
-            ttk.Label(agent_frame, text=status_text, style='Status.TLabel').pack(anchor='w')
-            
-            # Timestamp
-            try:
-                timestamp = datetime.fromisoformat(info['timestamp']).strftime('%H:%M:%S')
-                time_text = f"Last Update: {timestamp}"
-                ttk.Label(agent_frame, text=time_text, foreground='#888888', background='#2d2d2d').pack(anchor='w')
-            except:
-                pass
+        try:
+            # Check if widget exists
+            if not hasattr(self, 'agent_status_frame'):
+                return
+
+            # Clear existing status widgets
+            for widget in self.agent_status_frame.winfo_children():
+                widget.destroy()
+
+            if not self.agent_status:
+                ttk.Label(self.agent_status_frame, text="⏳ Waiting for agents to start...", style='Status.TLabel').pack()
+                return
+
+            for agent, info in self.agent_status.items():
+                agent_frame = ttk.Frame(self.agent_status_frame, style='Dark.TFrame', relief='ridge')
+                agent_frame.pack(fill='x', pady=2, padx=5)
+
+                # Agent name and status
+                status_text = f"🤖 {agent}"
+                ttk.Label(agent_frame, text=status_text, style='Header.TLabel').pack(anchor='w')
+
+                status_text = f"Status: {info['status']}"
+                ttk.Label(agent_frame, text=status_text, style='Status.TLabel').pack(anchor='w')
+
+                # Timestamp
+                try:
+                    timestamp = datetime.fromisoformat(info['timestamp']).strftime('%H:%M:%S')
+                    time_text = f"Last Update: {timestamp}"
+                    ttk.Label(agent_frame, text=time_text, foreground='#888888', background='#2d2d2d').pack(anchor='w')
+                except:
+                    pass
+        except Exception as e:
+            print(f"Agent status update error: {e}")
     
     def update_communications(self):
         """Update communications display"""
-        self.comm_text.delete(1.0, tk.END)
-        
-        # Show recent communications (last 20)
-        recent_comms = self.communications[-20:] if len(self.communications) > 20 else self.communications
-        
-        for comm in recent_comms:
-            try:
-                timestamp = datetime.fromisoformat(comm['timestamp']).strftime('%H:%M:%S')
-                from_agent = comm['from_agent']
-                to_agent = comm['to_agent']
-                message = comm['message']
-                msg_type = comm.get('type', 'info')
-                
-                # Color code by message type
-                if msg_type == 'code_review_request':
-                    color = '#ffaa00'  # Orange
-                elif msg_type == 'conflict':
-                    color = '#ff4444'  # Red
-                elif msg_type == 'integration_point':
-                    color = '#44ff44'  # Green
-                else:
-                    color = '#ffffff'  # White
-                
-                comm_line = f"[{timestamp}] {from_agent} → {to_agent}: {message}\n"
-                self.comm_text.insert(tk.END, comm_line)
-                
-            except Exception as e:
-                print(f"Communication display error: {e}")
-        
-        # Auto-scroll to bottom
-        self.comm_text.see(tk.END)
+        try:
+            # Check if widget exists
+            if not hasattr(self, 'comm_text'):
+                return
+
+            self.comm_text.delete(1.0, tk.END)
+
+            # Show recent communications (last 20)
+            recent_comms = self.communications[-20:] if len(self.communications) > 20 else self.communications
+
+            for comm in recent_comms:
+                try:
+                    timestamp = datetime.fromisoformat(comm['timestamp']).strftime('%H:%M:%S')
+                    from_agent = comm['from_agent']
+                    to_agent = comm['to_agent']
+                    message = comm['message']
+                    msg_type = comm.get('type', 'info')
+
+                    # Color code by message type
+                    if msg_type == 'code_review_request':
+                        color = '#ffaa00'  # Orange
+                    elif msg_type == 'conflict':
+                        color = '#ff4444'  # Red
+                    elif msg_type == 'integration_point':
+                        color = '#44ff44'  # Green
+                    else:
+                        color = '#ffffff'  # White
+
+                    comm_line = f"[{timestamp}] {from_agent} → {to_agent}: {message}\n"
+                    self.comm_text.insert(tk.END, comm_line)
+
+                except Exception as e:
+                    print(f"Communication display error: {e}")
+
+            # Auto-scroll to bottom
+            self.comm_text.see(tk.END)
+        except Exception as e:
+            print(f"Communications update error: {e}")
     
     def update_file_locks(self):
         """Update file locks display"""
-        self.file_locks_text.delete(1.0, tk.END)
-        
-        if not self.file_locks:
-            self.file_locks_text.insert(tk.END, "✅ No files currently locked\n")
-        else:
-            for file_path, lock_info in self.file_locks.items():
-                try:
-                    agent = lock_info['agent']
-                    timestamp = datetime.fromisoformat(lock_info['timestamp']).strftime('%H:%M:%S')
-                    lock_line = f"🔒 {file_path}\n   Locked by: {agent} at {timestamp}\n\n"
-                    self.file_locks_text.insert(tk.END, lock_line)
-                except:
-                    pass
+        try:
+            # Check if widget exists
+            if not hasattr(self, 'file_locks_text'):
+                return
+
+            self.file_locks_text.delete(1.0, tk.END)
+
+            if not self.file_locks:
+                self.file_locks_text.insert(tk.END, "✅ No files currently locked\n")
+            else:
+                for file_path, lock_info in self.file_locks.items():
+                    try:
+                        agent = lock_info['agent']
+                        timestamp = datetime.fromisoformat(lock_info['timestamp']).strftime('%H:%M:%S')
+                        lock_line = f"🔒 {file_path}\n   Locked by: {agent} at {timestamp}\n\n"
+                        self.file_locks_text.insert(tk.END, lock_line)
+                    except:
+                        pass
+        except Exception as e:
+            print(f"File locks update error: {e}")
     
     def update_integration_points(self):
         """Update integration points display"""
-        self.integration_text.delete(1.0, tk.END)
-        
-        if not self.integration_points:
-            self.integration_text.insert(tk.END, "⏳ No integration points registered yet\n")
-        else:
-            # Show recent integration points (last 10)
-            recent_points = self.integration_points[-10:] if len(self.integration_points) > 10 else self.integration_points
-            
-            for point in recent_points:
-                try:
-                    timestamp = datetime.fromisoformat(point['timestamp']).strftime('%H:%M:%S')
-                    agent = point['agent']
-                    component = point['component']
-                    point_line = f"🔗 [{timestamp}] {component}\n   by {agent}\n\n"
-                    self.integration_text.insert(tk.END, point_line)
-                except:
-                    pass
+        try:
+            # Check if widget exists
+            if not hasattr(self, 'integration_text'):
+                return
+
+            self.integration_text.delete(1.0, tk.END)
+
+            if not self.integration_points:
+                self.integration_text.insert(tk.END, "⏳ No integration points registered yet\n")
+            else:
+                # Show recent integration points (last 10)
+                recent_points = self.integration_points[-10:] if len(self.integration_points) > 10 else self.integration_points
+
+                for point in recent_points:
+                    try:
+                        timestamp = datetime.fromisoformat(point['timestamp']).strftime('%H:%M:%S')
+                        agent = point['agent']
+                        component = point['component']
+                        point_line = f"🔗 [{timestamp}] {component}\n   by {agent}\n\n"
+                        self.integration_text.insert(tk.END, point_line)
+                    except:
+                        pass
+        except Exception as e:
+            print(f"Integration points update error: {e}")
     
     def is_recent(self, timestamp_str, minutes=5):
         """Check if timestamp is within recent minutes"""
