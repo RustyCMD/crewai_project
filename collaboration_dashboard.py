@@ -5,10 +5,13 @@ Monitor multi-agent development progress in real-time
 """
 
 import tkinter as tk
-from tkinter import ttk, scrolledtext
+from tkinter import ttk, scrolledtext, messagebox
 import json
 import threading
 import time
+import subprocess
+import sys
+import signal
 from datetime import datetime
 import os
 from agent_communication import comm_hub
@@ -35,6 +38,11 @@ class CollaborationDashboard:
         self.file_lock_requests = []
         self.conflict_reports = []
         self.shared_context = {}
+
+        # Agent process management
+        self.agent_processes = {}
+        self.agents_running = False
+        self.agent_start_time = None
 
         # Statistics tracking
         self.stats = {
@@ -79,9 +87,27 @@ class CollaborationDashboard:
                            foreground='#00ff00', 
                            font=('Arial', 10))
         
-        self.style.configure('Dark.TFrame', 
-                           background='#2d2d2d', 
+        self.style.configure('Dark.TFrame',
+                           background='#2d2d2d',
                            relief='raised')
+
+        self.style.configure('Accent.TButton',
+                           background='#0078d4',
+                           foreground='#ffffff',
+                           font=('Arial', 10, 'bold'),
+                           padding=(10, 5))
+
+        self.style.configure('Success.TButton',
+                           background='#107c10',
+                           foreground='#ffffff',
+                           font=('Arial', 10, 'bold'),
+                           padding=(10, 5))
+
+        self.style.configure('Danger.TButton',
+                           background='#d13438',
+                           foreground='#ffffff',
+                           font=('Arial', 10, 'bold'),
+                           padding=(10, 5))
     
     def create_widgets(self):
         """Create enhanced dashboard widgets"""
@@ -90,15 +116,53 @@ class CollaborationDashboard:
         title_frame = ttk.Frame(self.root, style='Dark.TFrame')
         title_frame.pack(fill='x', pady=5)
 
-        title_label = ttk.Label(title_frame,
+        # Title and control panel container
+        title_container = ttk.Frame(title_frame, style='Dark.TFrame')
+        title_container.pack(fill='x', padx=10)
+
+        # Left side - Title and session info
+        title_info_frame = ttk.Frame(title_container, style='Dark.TFrame')
+        title_info_frame.pack(side='left', fill='x', expand=True)
+
+        title_label = ttk.Label(title_info_frame,
                                text="🤖 Collaborative CrewAI Development Dashboard",
                                style='Title.TLabel')
-        title_label.pack()
+        title_label.pack(anchor='w')
 
-        self.session_label = ttk.Label(title_frame,
+        self.session_label = ttk.Label(title_info_frame,
                                       text=f"Session Started: {self.stats['session_start'].strftime('%Y-%m-%d %H:%M:%S')}",
                                       style='Status.TLabel')
-        self.session_label.pack()
+        self.session_label.pack(anchor='w')
+
+        # Right side - Control panel
+        control_panel = ttk.Frame(title_container, style='Dark.TFrame')
+        control_panel.pack(side='right', padx=10)
+
+        # Agent control buttons frame
+        agent_control_frame = ttk.Frame(control_panel, style='Dark.TFrame')
+        agent_control_frame.pack(pady=2)
+
+        # Start Agents button
+        self.start_agents_button = ttk.Button(agent_control_frame,
+                                            text="▶️ Start Agents",
+                                            command=self.start_agents,
+                                            style='Success.TButton')
+        self.start_agents_button.pack(side='left', padx=2)
+
+        # Stop Agents button
+        self.stop_agents_button = ttk.Button(agent_control_frame,
+                                           text="⏹️ Stop Agents",
+                                           command=self.stop_agents,
+                                           style='Danger.TButton',
+                                           state='disabled')
+        self.stop_agents_button.pack(side='left', padx=2)
+
+        # Reset Session button
+        self.reset_button = ttk.Button(control_panel,
+                                      text="🔄 Reset Session",
+                                      command=self.reset_session,
+                                      style='Accent.TButton')
+        self.reset_button.pack(pady=5)
 
         # Create notebook for tabbed interface
         self.notebook = ttk.Notebook(self.root)
@@ -726,7 +790,604 @@ class CollaborationDashboard:
             return (now - timestamp).total_seconds() < (minutes * 60)
         except:
             return False
-    
+
+    def start_agents(self):
+        """Start all CrewAI agents in separate processes"""
+        try:
+            if self.agents_running:
+                messagebox.showwarning("Agents Running", "Agents are already running!")
+                return
+
+            # Show confirmation dialog with agent selection
+            agent_choice = messagebox.askyesnocancel(
+                "Start Agents",
+                "🤖 Choose agent configuration to start:\n\n"
+                "YES: Advanced Collaborative Agents (6 agents)\n"
+                "   • Frontend, Backend, Integration, QA, Performance, File Lock Manager\n"
+                "   • Real-time collaboration with file locking\n\n"
+                "NO: Basic Game Development Crew (4 agents)\n"
+                "   • Senior, Junior, QA, DevOps\n"
+                "   • Sequential task execution\n\n"
+                "CANCEL: Don't start agents",
+                icon='question'
+            )
+
+            if agent_choice is None:  # Cancel
+                return
+
+            # Disable start button and update UI
+            self.start_agents_button.config(state='disabled')
+            self.status_bar.config(text="🚀 Starting agents... Please wait...")
+            self.root.update()
+
+            # Determine which script to run
+            if agent_choice:  # YES - Advanced collaborative
+                script_name = "run_collaborative_development.py"
+                agent_type = "Advanced Collaborative"
+                expected_agents = ["Frontend Developer", "Backend Developer", "Integration Developer",
+                                 "QA Engineer", "Performance Engineer", "File Lock Manager"]
+            else:  # NO - Basic crew
+                script_name = "main.py"
+                agent_type = "Basic Game Development"
+                expected_agents = ["Senior Game Architect", "Junior Game Developer",
+                                 "Game QA Engineer", "Game DevOps Engineer"]
+
+            # Start agents in separate thread to avoid blocking UI
+            start_thread = threading.Thread(
+                target=self._start_agents_worker,
+                args=(script_name, agent_type, expected_agents),
+                daemon=True
+            )
+            start_thread.start()
+
+        except Exception as e:
+            error_msg = f"❌ Failed to start agents: {str(e)}"
+            print(f"Start agents error: {e}")
+            self.status_bar.config(text=error_msg)
+            self.start_agents_button.config(state='normal')
+            messagebox.showerror("Start Failed", f"Failed to start agents:\n{str(e)}")
+
+    def _start_agents_worker(self, script_name, agent_type, expected_agents):
+        """Worker thread for starting agents"""
+        try:
+            # Update agent status to show starting
+            for agent_name in expected_agents:
+                self.agent_status[agent_name] = {
+                    "status": "Starting...",
+                    "timestamp": datetime.now().isoformat(),
+                    "details": {"process": "initializing"}
+                }
+
+            # Start the agent process
+            process = subprocess.Popen([
+                sys.executable, script_name
+            ], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+            # Store process information
+            self.agent_processes[agent_type] = {
+                "process": process,
+                "script": script_name,
+                "start_time": datetime.now(),
+                "agents": expected_agents
+            }
+
+            self.agents_running = True
+            self.agent_start_time = datetime.now()
+
+            # Update UI on main thread
+            self.root.after(0, self._on_agents_started, agent_type, expected_agents)
+
+            # Monitor process in background
+            monitor_thread = threading.Thread(
+                target=self._monitor_agent_process,
+                args=(process, agent_type),
+                daemon=True
+            )
+            monitor_thread.start()
+
+        except Exception as e:
+            # Update UI on main thread with error
+            self.root.after(0, self._on_agents_start_failed, str(e))
+
+    def _on_agents_started(self, agent_type, expected_agents):
+        """Called on main thread when agents are started"""
+        try:
+            # Update button states
+            self.start_agents_button.config(state='disabled')
+            self.stop_agents_button.config(state='normal')
+
+            # Update status bar
+            self.status_bar.config(text=f"✅ {agent_type} agents started successfully!")
+
+            # Update agent status to running
+            for agent_name in expected_agents:
+                self.agent_status[agent_name] = {
+                    "status": "Running",
+                    "timestamp": datetime.now().isoformat(),
+                    "details": {"process": "active", "type": agent_type}
+                }
+
+            # Schedule status bar reset after 5 seconds
+            self.root.after(5000, lambda: self.status_bar.config(text="🔄 Monitoring collaborative development..."))
+
+        except Exception as e:
+            print(f"On agents started error: {e}")
+
+    def _on_agents_start_failed(self, error_msg):
+        """Called on main thread when agent start fails"""
+        try:
+            # Re-enable start button
+            self.start_agents_button.config(state='normal')
+            self.stop_agents_button.config(state='disabled')
+
+            # Update status bar
+            error_text = f"❌ Failed to start agents: {error_msg}"
+            self.status_bar.config(text=error_text)
+
+            # Show error dialog
+            messagebox.showerror("Start Failed", f"Failed to start agents:\n{error_msg}")
+
+            # Reset agent running state
+            self.agents_running = False
+            self.agent_start_time = None
+
+        except Exception as e:
+            print(f"On agents start failed error: {e}")
+
+    def _monitor_agent_process(self, process, agent_type):
+        """Monitor agent process and handle completion/termination"""
+        try:
+            # Wait for process to complete
+            stdout, stderr = process.communicate()
+
+            # Process has completed
+            self.root.after(0, self._on_agents_completed, agent_type, process.returncode, stdout, stderr)
+
+        except Exception as e:
+            print(f"Monitor agent process error: {e}")
+            self.root.after(0, self._on_agents_error, agent_type, str(e))
+
+    def _on_agents_completed(self, agent_type, return_code, stdout, stderr):
+        """Called when agent process completes"""
+        try:
+            # Update process tracking
+            if agent_type in self.agent_processes:
+                del self.agent_processes[agent_type]
+
+            # Update button states
+            self.start_agents_button.config(state='normal')
+            self.stop_agents_button.config(state='disabled')
+            self.agents_running = False
+
+            # Update status based on return code
+            if return_code == 0:
+                status_text = f"✅ {agent_type} agents completed successfully!"
+                # Update agent status to completed
+                for agent_name in self.agent_status:
+                    if self.agent_status[agent_name].get("details", {}).get("type") == agent_type:
+                        self.agent_status[agent_name]["status"] = "Completed"
+                        self.agent_status[agent_name]["timestamp"] = datetime.now().isoformat()
+            else:
+                status_text = f"⚠️ {agent_type} agents completed with errors (code: {return_code})"
+                # Update agent status to error
+                for agent_name in self.agent_status:
+                    if self.agent_status[agent_name].get("details", {}).get("type") == agent_type:
+                        self.agent_status[agent_name]["status"] = "Error"
+                        self.agent_status[agent_name]["timestamp"] = datetime.now().isoformat()
+
+            self.status_bar.config(text=status_text)
+
+            # Show completion message
+            if return_code == 0:
+                messagebox.showinfo("Agents Completed", f"{agent_type} agents have completed their tasks successfully!")
+            else:
+                messagebox.showwarning("Agents Completed with Errors",
+                                     f"{agent_type} agents completed but encountered errors.\nCheck the logs for details.")
+
+        except Exception as e:
+            print(f"On agents completed error: {e}")
+
+    def _on_agents_error(self, agent_type, error_msg):
+        """Called when agent process encounters an error"""
+        try:
+            # Update process tracking
+            if agent_type in self.agent_processes:
+                del self.agent_processes[agent_type]
+
+            # Update button states
+            self.start_agents_button.config(state='normal')
+            self.stop_agents_button.config(state='disabled')
+            self.agents_running = False
+
+            # Update status
+            status_text = f"❌ {agent_type} agents encountered an error: {error_msg}"
+            self.status_bar.config(text=status_text)
+
+            # Update agent status to error
+            for agent_name in self.agent_status:
+                if self.agent_status[agent_name].get("details", {}).get("type") == agent_type:
+                    self.agent_status[agent_name]["status"] = "Error"
+                    self.agent_status[agent_name]["timestamp"] = datetime.now().isoformat()
+
+            messagebox.showerror("Agent Error", f"{agent_type} agents encountered an error:\n{error_msg}")
+
+        except Exception as e:
+            print(f"On agents error error: {e}")
+
+    def stop_agents(self):
+        """Stop all running agent processes with confirmation"""
+        try:
+            if not self.agents_running or not self.agent_processes:
+                messagebox.showwarning("No Agents Running", "No agents are currently running!")
+                return
+
+            # Show confirmation dialog
+            result = messagebox.askyesno(
+                "Stop Agents",
+                "⚠️ This will terminate all running agent processes:\n\n"
+                f"• {len(self.agent_processes)} active process(es)\n"
+                f"• All current agent tasks will be interrupted\n"
+                f"• File locks will be cleared\n\n"
+                "Are you sure you want to stop all agents?",
+                icon='warning'
+            )
+
+            if not result:
+                return
+
+            # Disable stop button and update UI
+            self.stop_agents_button.config(state='disabled')
+            self.status_bar.config(text="⏹️ Stopping agents... Please wait...")
+            self.root.update()
+
+            # Stop agents in separate thread to avoid blocking UI
+            stop_thread = threading.Thread(
+                target=self._stop_agents_worker,
+                daemon=True
+            )
+            stop_thread.start()
+
+        except Exception as e:
+            error_msg = f"❌ Failed to stop agents: {str(e)}"
+            print(f"Stop agents error: {e}")
+            self.status_bar.config(text=error_msg)
+            messagebox.showerror("Stop Failed", f"Failed to stop agents:\n{str(e)}")
+
+    def _stop_agents_worker(self):
+        """Worker thread for stopping agents"""
+        try:
+            stopped_processes = []
+            failed_processes = []
+
+            # Update agent status to show stopping
+            for agent_name in self.agent_status:
+                if self.agent_status[agent_name].get("status") in ["Running", "Starting..."]:
+                    self.agent_status[agent_name]["status"] = "Stopping..."
+                    self.agent_status[agent_name]["timestamp"] = datetime.now().isoformat()
+
+            # Stop all agent processes
+            for agent_type, process_info in list(self.agent_processes.items()):
+                try:
+                    process = process_info["process"]
+
+                    if process.poll() is None:  # Process is still running
+                        # Try graceful termination first
+                        process.terminate()
+
+                        # Wait up to 10 seconds for graceful termination
+                        try:
+                            process.wait(timeout=10)
+                            stopped_processes.append(agent_type)
+                        except subprocess.TimeoutExpired:
+                            # Force kill if graceful termination fails
+                            process.kill()
+                            process.wait()
+                            stopped_processes.append(f"{agent_type} (force killed)")
+                    else:
+                        stopped_processes.append(f"{agent_type} (already stopped)")
+
+                except Exception as e:
+                    failed_processes.append(f"{agent_type}: {str(e)}")
+
+            # Clear process tracking
+            self.agent_processes.clear()
+            self.agents_running = False
+            self.agent_start_time = None
+
+            # Clear file locks held by stopped agents
+            self._clear_agent_file_locks()
+
+            # Update UI on main thread
+            self.root.after(0, self._on_agents_stopped, stopped_processes, failed_processes)
+
+        except Exception as e:
+            # Update UI on main thread with error
+            self.root.after(0, self._on_agents_stop_failed, str(e))
+
+    def _clear_agent_file_locks(self):
+        """Clear file locks held by stopped agents"""
+        try:
+            # Clear in-memory file locks
+            self.file_locks.clear()
+
+            # Clear file locks in communication file if it exists
+            if os.path.exists(comm_hub.communication_file):
+                with comm_hub.lock:
+                    data = comm_hub._read_data()
+                    data["file_locks"] = {}
+                    with open(comm_hub.communication_file, 'w') as f:
+                        json.dump(data, f, indent=2)
+
+        except Exception as e:
+            print(f"Clear agent file locks error: {e}")
+
+    def _on_agents_stopped(self, stopped_processes, failed_processes):
+        """Called on main thread when agents are stopped"""
+        try:
+            # Update button states
+            self.start_agents_button.config(state='normal')
+            self.stop_agents_button.config(state='disabled')
+
+            # Update agent status to stopped
+            for agent_name in self.agent_status:
+                if self.agent_status[agent_name].get("status") == "Stopping...":
+                    self.agent_status[agent_name]["status"] = "Stopped"
+                    self.agent_status[agent_name]["timestamp"] = datetime.now().isoformat()
+
+            # Update status bar
+            if failed_processes:
+                status_text = f"⚠️ Agents stopped with some errors ({len(stopped_processes)} stopped, {len(failed_processes)} failed)"
+            else:
+                status_text = f"✅ All agents stopped successfully ({len(stopped_processes)} processes)"
+
+            self.status_bar.config(text=status_text)
+
+            # Show completion message
+            message = f"Agent processes stopped:\n\n"
+            if stopped_processes:
+                message += "✅ Successfully stopped:\n"
+                for process in stopped_processes:
+                    message += f"  • {process}\n"
+
+            if failed_processes:
+                message += "\n❌ Failed to stop:\n"
+                for process in failed_processes:
+                    message += f"  • {process}\n"
+
+            if failed_processes:
+                messagebox.showwarning("Agents Stopped with Errors", message)
+            else:
+                messagebox.showinfo("Agents Stopped", message)
+
+            # Schedule status bar reset after 5 seconds
+            self.root.after(5000, lambda: self.status_bar.config(text="🔄 Monitoring collaborative development..."))
+
+        except Exception as e:
+            print(f"On agents stopped error: {e}")
+
+    def _on_agents_stop_failed(self, error_msg):
+        """Called on main thread when agent stop fails"""
+        try:
+            # Re-enable stop button
+            self.stop_agents_button.config(state='normal')
+
+            # Update status bar
+            error_text = f"❌ Failed to stop agents: {error_msg}"
+            self.status_bar.config(text=error_text)
+
+            # Show error dialog
+            messagebox.showerror("Stop Failed", f"Failed to stop agents:\n{error_msg}")
+
+        except Exception as e:
+            print(f"On agents stop failed error: {e}")
+
+    def reset_session(self):
+        """Reset the entire session with confirmation dialog"""
+        try:
+            # Check if agents are running
+            agents_warning = ""
+            if self.agents_running:
+                agents_warning = "\n⚠️ WARNING: Agents are currently running and will be stopped!\n"
+
+            # Show confirmation dialog
+            result = messagebox.askyesno(
+                "Reset Session",
+                f"⚠️ This will clear all session data including:\n\n"
+                "• Agent status and communications\n"
+                "• File locks and integration points\n"
+                "• Statistics and performance metrics\n"
+                "• All display data\n"
+                f"{agents_warning}\n"
+                "Are you sure you want to reset the session?",
+                icon='warning'
+            )
+
+            if not result:
+                return
+
+            # Stop agents if they're running
+            if self.agents_running:
+                self.status_bar.config(text="🔄 Stopping agents before reset...")
+                self.root.update()
+
+                # Stop agents synchronously for reset
+                self._stop_agents_for_reset()
+
+            # Thread-safe reset - temporarily pause monitoring
+            was_monitoring = self.monitoring
+            if was_monitoring:
+                self.monitoring = False
+                time.sleep(0.5)  # Give monitoring thread time to pause
+
+            try:
+                # Clear all data structures
+                self.agent_status = {}
+                self.communications = []
+                self.file_locks = {}
+                self.integration_points = []
+                self.file_lock_requests = []
+                self.conflict_reports = []
+                self.shared_context = {}
+
+                # Clear agent process data
+                self.agent_processes = {}
+                self.agents_running = False
+                self.agent_start_time = None
+
+                # Reset statistics to initial values
+                current_time = datetime.now()
+                self.stats = {
+                    'session_start': current_time,
+                    'total_messages': 0,
+                    'files_created': 0,
+                    'files_modified': 0,
+                    'lock_requests': 0,
+                    'lock_approvals': 0,
+                    'lock_denials': 0,
+                    'conflicts_resolved': 0,
+                    'agent_activity': {},
+                    'hourly_activity': [],
+                    'performance_metrics': {}
+                }
+
+                # Reset communication file if it exists
+                if os.path.exists(comm_hub.communication_file):
+                    with comm_hub.lock:
+                        initial_data = {
+                            "communications": [],
+                            "status_updates": [],
+                            "file_locks": {},
+                            "integration_points": [],
+                            "file_lock_requests": [],
+                            "conflict_reports": [],
+                            "shared_context": {}
+                        }
+                        with open(comm_hub.communication_file, 'w') as f:
+                            json.dump(initial_data, f, indent=2)
+
+                # Clear all GUI displays
+                self.clear_all_displays()
+
+                # Update session label with new start time
+                self.session_label.config(
+                    text=f"Session Started: {current_time.strftime('%Y-%m-%d %H:%M:%S')}"
+                )
+
+                # Reset button states
+                self.start_agents_button.config(state='normal')
+                self.stop_agents_button.config(state='disabled')
+
+                # Show success message in status bar
+                self.status_bar.config(text="✅ Session reset successfully! Starting fresh monitoring...")
+
+                # Resume monitoring
+                if was_monitoring:
+                    self.monitoring = True
+
+                # Schedule status bar reset after 5 seconds
+                self.root.after(5000, lambda: self.status_bar.config(text="🔄 Monitoring collaborative development..."))
+
+            except Exception as e:
+                # Resume monitoring even if reset failed
+                if was_monitoring:
+                    self.monitoring = True
+                raise e
+
+        except Exception as e:
+            error_msg = f"❌ Reset failed: {str(e)}"
+            print(f"Reset session error: {e}")
+            self.status_bar.config(text=error_msg)
+            messagebox.showerror("Reset Failed", f"Failed to reset session:\n{str(e)}")
+
+    def _stop_agents_for_reset(self):
+        """Stop agents synchronously for session reset"""
+        try:
+            if not self.agent_processes:
+                return
+
+            # Stop all agent processes
+            for agent_type, process_info in list(self.agent_processes.items()):
+                try:
+                    process = process_info["process"]
+
+                    if process.poll() is None:  # Process is still running
+                        # Try graceful termination first
+                        process.terminate()
+
+                        # Wait up to 5 seconds for graceful termination
+                        try:
+                            process.wait(timeout=5)
+                        except subprocess.TimeoutExpired:
+                            # Force kill if graceful termination fails
+                            process.kill()
+                            process.wait()
+
+                except Exception as e:
+                    print(f"Error stopping {agent_type} during reset: {e}")
+
+            # Clear process tracking
+            self.agent_processes.clear()
+            self.agents_running = False
+            self.agent_start_time = None
+
+        except Exception as e:
+            print(f"Stop agents for reset error: {e}")
+
+    def clear_all_displays(self):
+        """Clear all text widgets and displays in the GUI"""
+        try:
+            # Clear overview tab displays
+            if hasattr(self, 'comm_text'):
+                self.comm_text.delete(1.0, tk.END)
+                self.comm_text.insert(tk.END, "📝 Session reset - waiting for new communications...\n")
+
+            if hasattr(self, 'file_locks_text'):
+                self.file_locks_text.delete(1.0, tk.END)
+                self.file_locks_text.insert(tk.END, "✅ No files currently locked\n")
+
+            if hasattr(self, 'integration_text'):
+                self.integration_text.delete(1.0, tk.END)
+                self.integration_text.insert(tk.END, "⏳ No integration points registered yet\n")
+
+            # Clear agent status frame
+            if hasattr(self, 'agent_status_frame'):
+                for widget in self.agent_status_frame.winfo_children():
+                    widget.destroy()
+                ttk.Label(self.agent_status_frame, text="⏳ Waiting for agents to start...", style='Status.TLabel').pack()
+
+            # Clear statistics displays
+            if hasattr(self, 'session_stats_frame'):
+                for widget in self.session_stats_frame.winfo_children():
+                    widget.destroy()
+
+            if hasattr(self, 'activity_stats_frame'):
+                for widget in self.activity_stats_frame.winfo_children():
+                    widget.destroy()
+
+            # Clear performance displays
+            if hasattr(self, 'metrics_frame'):
+                for widget in self.metrics_frame.winfo_children():
+                    widget.destroy()
+
+            if hasattr(self, 'timeline_text'):
+                self.timeline_text.delete(1.0, tk.END)
+                self.timeline_text.insert(tk.END, "📊 Session reset - activity timeline cleared\n")
+
+            # Clear filesystem displays
+            if hasattr(self, 'file_tree'):
+                self.file_tree.delete(*self.file_tree.get_children())
+
+            if hasattr(self, 'file_details_text'):
+                self.file_details_text.delete(1.0, tk.END)
+                self.file_details_text.insert(tk.END, "📁 Session reset - file system monitoring restarted\n")
+
+            if hasattr(self, 'lock_requests_text'):
+                self.lock_requests_text.delete(1.0, tk.END)
+                self.lock_requests_text.insert(tk.END, "✅ No pending lock requests\n")
+
+        except Exception as e:
+            print(f"Clear displays error: {e}")
+
     def run(self):
         """Run the dashboard"""
         try:
