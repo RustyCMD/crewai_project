@@ -15,6 +15,7 @@ from collaborative_tools import (
 )
 from dotenv import load_dotenv
 import logging
+from agent_communication import comm_hub
 
 # Load environment variables
 load_dotenv()
@@ -391,10 +392,9 @@ def setup_collaboration_environment():
         os.makedirs(directory, exist_ok=True)
         logger.info(f"Created directory: {directory}")
 
-    # Create shared communication file
-    communication_file = "Game/shared/agent_communication.json"
-    with open(communication_file, 'w') as f:
-        f.write('{"communications": [], "status_updates": [], "shared_context": {}}')
+    # FIX: Use comm_hub.initialize_communication_file() instead of manual JSON creation
+    # This ensures proper structure and consistency with the communication hub
+    comm_hub.initialize_communication_file()
 
     logger.info("Collaborative environment setup complete!")
 

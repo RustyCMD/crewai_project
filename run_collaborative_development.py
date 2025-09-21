@@ -82,9 +82,9 @@ def monitor_collaboration():
                         logger.info(f"   {agent}: {status}")
                 
                 # Check recent communications
-                with open(comm_hub.communication_file, 'r') as f:
-                    import json
-                    data = json.load(f)
+                # FIX: Use comm_hub.lock to prevent race conditions when reading JSON file
+                with comm_hub.lock:
+                    data = comm_hub._read_data()
                     recent_comms = data["communications"][-5:]
                     
                     if recent_comms:

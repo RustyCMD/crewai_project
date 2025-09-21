@@ -20,51 +20,59 @@ class CollaborativeFileWriterTool(BaseTool):
     
     def _run(self, file_path: str, content: str, agent_name: str = "Frontend Developer") -> str:
         """Write file with collaboration features"""
+        lock_acquired = False
         try:
             # Request file lock and wait for approval
             lock_result = comm_hub.request_file_lock_with_approval(agent_name, file_path)
             if not lock_result["approved"]:
                 return f"❌ File lock request denied: {lock_result['reason']}"
-            
+
+            # FIX: Track lock acquisition to ensure cleanup in finally block
+            lock_acquired = True
+
             # Check if file exists and notify other agents
             file_exists = os.path.exists(file_path)
             if file_exists:
                 comm_hub.send_message(
-                    agent_name, 
-                    "all", 
+                    agent_name,
+                    "all",
                     f"Modifying existing file: {file_path}",
                     "file_modification"
                 )
             else:
                 comm_hub.send_message(
                     agent_name,
-                    "all", 
+                    "all",
                     f"Creating new file: {file_path}",
                     "file_creation"
                 )
-            
+
             # Write the file
             os.makedirs(os.path.dirname(file_path), exist_ok=True)
             with open(file_path, 'w', encoding='utf-8') as f:
                 f.write(content)
-            
+
             # Update status and notify team
             comm_hub.update_status(agent_name, f"Created/Updated {file_path}", {
                 "file_path": file_path,
                 "lines": len(content.split('\n')),
                 "action": "created" if not file_exists else "modified"
             })
-            
-            # Release file lock
-            comm_hub.release_file_lock(agent_name, file_path)
-            
+
             logger.info(f"✅ {agent_name} successfully wrote {file_path}")
             return f"✅ Successfully wrote {file_path}. Team has been notified."
-            
+
         except Exception as e:
             error_msg = f"❌ Error writing {file_path}: {str(e)}"
             logger.error(error_msg)
             return error_msg
+        finally:
+            # FIX: Always release file lock in finally block to prevent deadlocks
+            if lock_acquired:
+                try:
+                    comm_hub.release_file_lock(agent_name, file_path)
+                except Exception as e:
+                    logger.error(f"❌ Error releasing file lock for {file_path}: {str(e)}")
 
 class TeamCommunicationTool(BaseTool):
     """Tool for inter-agent communication"""
@@ -172,10 +180,11 @@ class IntegrationCoordinatorTool(BaseTool):
                 
             elif action == "check_dependencies":
                 component = kwargs.get("component", "")
-                
+
                 # Get all integration points
-                with open(comm_hub.communication_file, 'r') as f:
-                    data = json.load(f)
+                # FIX: Use comm_hub.lock to prevent race conditions when reading JSON file
+                with comm_hub.lock:
+                    data = comm_hub._read_data()
                 
                 dependencies = [
                     point for point in data["integration_points"]
@@ -347,8 +356,9 @@ class ProjectStatusTool(BaseTool):
                 return result
                 
             elif action == "file_status":
-                with open(comm_hub.communication_file, 'r') as f:
-                    data = json.load(f)
+                # FIX: Use comm_hub.lock to prevent race conditions when reading JSON file
+                with comm_hub.lock:
+                    data = comm_hub._read_data()
                 
                 if data["file_locks"]:
                     result = "🔒 Locked files:\n"
@@ -359,8 +369,9 @@ class ProjectStatusTool(BaseTool):
                     return "✅ No files currently locked"
                     
             elif action == "integration_status":
-                with open(comm_hub.communication_file, 'r') as f:
-                    data = json.load(f)
+                # FIX: Use comm_hub.lock to prevent race conditions when reading JSON file
+                with comm_hub.lock:
+                    data = comm_hub._read_data()
                 
                 points = data["integration_points"]
                 if points:

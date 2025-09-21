@@ -328,8 +328,9 @@ class CollaborationDashboard:
             try:
                 # Check if communication file exists
                 if os.path.exists(comm_hub.communication_file):
-                    with open(comm_hub.communication_file, 'r') as f:
-                        data = json.load(f)
+                    # FIX: Use comm_hub.lock to prevent race conditions when reading JSON file
+                    with comm_hub.lock:
+                        data = comm_hub._read_data()
 
                     # Update all data
                     old_comm_count = len(self.communications)
