@@ -1,0 +1,154 @@
+{
+  "communications": [
+    {
+      "id": "f538ba8e-f26a-4a69-a56a-314ffeeb80eb",
+      "timestamp": "2025-09-21T21:05:43.766416",
+      "from_agent": "Frontend Developer",
+      "to_agent": "all",
+      "message": "report file locking issue",
+      "type": "info",
+      "read": false
+    },
+    {
+      "id": "18d98bfb-9e68-4ec1-b0e7-90c00cbdd424",
+      "timestamp": "2025-09-21T21:06:09.815321",
+      "from_agent": "Frontend Developer",
+      "to_agent": "all",
+      "message": "request code review",
+      "type": "info",
+      "read": false
+    },
+    {
+      "id": "7a90f771-f2e8-4148-9aad-fdaf440d5d2b",
+      "timestamp": "2025-09-21T21:06:25.786419",
+      "from_agent": "Frontend Developer",
+      "to_agent": "all",
+      "message": "Frontend Developer, please provide feedback on the backend API specifications.  I'm documenting the integration points based on the current planned architecture.  Your feedback is crucial for ensuring a smooth integration once the file lock issue is resolved.",
+      "type": "info",
+      "read": false
+    },
+    {
+      "id": "91375c15-098b-4c45-824b-7333719813a6",
+      "timestamp": "2025-09-21T21:06:29.193703",
+      "from_agent": "Frontend Developer",
+      "to_agent": "all",
+      "message": "Sent API specifications and integration documentation to Frontend Agent. Awaiting feedback.",
+      "type": "info",
+      "read": false
+    },
+    {
+      "id": "84e4f7e6-e232-42d3-a2f8-9e6510e0ed63",
+      "timestamp": "2025-09-21T21:06:32.020464",
+      "from_agent": "Frontend Developer",
+      "to_agent": "all",
+      "message": "Shared performance optimization notes with the Performance Agent.",
+      "type": "info",
+      "read": false
+    },
+    {
+      "id": "595a6aed-80ee-41f6-98f5-5aae70c99d6c",
+      "timestamp": "2025-09-21T21:06:36.286671",
+      "from_agent": "Frontend Developer",
+      "to_agent": "all",
+      "message": "Shared testing interfaces with the QA Agent.",
+      "type": "info",
+      "read": false
+    },
+    {
+      "id": "53c3d0db-1914-4c1d-9e0e-0eea2c69d5e1",
+      "timestamp": "2025-09-21T21:06:56.476929",
+      "from_agent": "Frontend Developer",
+      "to_agent": "all",
+      "message": "send message to all agents:  \"Hello team, I'm checking in to coordinate the development. The main issue is the file locking problem. Frontend development is blocked. Backend API specifications are also needed. Please provide updates on these issues and your progress. Let's also ensure we're adhering to the communication protocol (check-ins every 10 minutes, addressing conflicts immediately, maintaining project status).",
+      "type": "info",
+      "read": false
+    },
+    {
+      "id": "85de3e0b-7a79-4a7a-8d9a-7a9e3889bb96",
+      "timestamp": "2025-09-21T21:07:01.974319",
+      "from_agent": "Frontend Developer",
+      "to_agent": "all",
+      "message": "request assistance with file locking issue",
+      "type": "info",
+      "read": false
+    },
+    {
+      "id": "f8a9e99b-1e85-43e9-bb1f-ed3b646db82b",
+      "timestamp": "2025-09-21T21:07:08.370985",
+      "from_agent": "Frontend Developer",
+      "to_agent": "all",
+      "message": "request_code_review",
+      "type": "info",
+      "read": false
+    },
+    {
+      "id": "8e121a48-4d65-4aae-9e9b-78959a434f0d",
+      "timestamp": "2025-09-21T21:07:15.113000",
+      "from_agent": "unknown",
+      "to_agent": "all",
+      "message": "",
+      "type": "info",
+      "read": false
+    },
+    {
+      "id": "849ffd82-3567-462a-9a62-d95bebb21f14",
+      "timestamp": "2025-09-21T21:07:26.332251",
+      "from_agent": "Frontend Developer",
+      "to_agent": "all",
+      "message": "send message to all agents:  \"Checking in again. Has anyone made progress on the file locking issue or the backend API specifications?  Please provide updates.",
+      "type": "info",
+      "read": false
+    },
+    {
+      "id": "4cd0d5df-ea37-4fce-8803-ff0789c2f606",
+      "timestamp": "2025-09-21T21:08:03.241715",
+      "from_agent": "unknown",
+      "to_agent": "all",
+      "message": "",
+      "type": "info",
+      "read": false
+    },
+    {
+      "id": "f470d03f-cbdd-4516-87ec-16a5551f5e82",
+      "timestamp": "2025-09-21T21:08:54.901304",
+      "from_agent": "Frontend Developer",
+      "to_agent": "all",
+      "message": "I am encountering an issue when using the collaborative_file_writer tool. I keep getting a 'File lock request denied' error. Could someone please assist me?",
+      "type": "info",
+      "read": false
+    },
+    {
+      "id": "77b0f728-cc6d-4604-857d-e595eafe03dc",
+      "timestamp": "2025-09-21T21:09:33.573924",
+      "from_agent": "Frontend Developer",
+      "to_agent": "all",
+      "message": "request file lock issue resolution",
+      "type": "info",
+      "read": false
+    },
+    {
+      "id": "cb789354-1bf7-491c-b9ec-9374757995c5",
+      "timestamp": "2025-09-21T21:09:52.735026",
+      "from_agent": "Frontend Developer",
+      "to_agent": "all",
+      "message": "Request assistance with file locking issue on Game/qa/test_suite.py. I am unable to create or modify the file. Please advise.",
+      "type": "info",
+      "read": false
+    },
+    {
+      "id": "ef5bb690-83bf-4961-afc7-a1dece728970",
+      "timestamp": "2025-09-21T21:10:18.019023",
+      "from_agent": "Frontend Developer",
+      "to_agent": "all",
+      "message": "File access denied. Unable to write to Game/qa/continuous_testing.py. Requesting assistance.",
+      "type": "info",
+      "read": false
+    }
+  ],
+  "status_updates": [],
+  "shared_context": {},
+  "file_locks": {},
+  "file_lock_requests": [],
+  "integration_points": [],
+  "conflict_reports": []
+}
