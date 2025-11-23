@@ -351,8 +351,8 @@ class CollaborationDashboard:
                 # Check if communication file exists
                 if os.path.exists(comm_hub.communication_file):
                     # FIX: Use comm_hub.lock to prevent race conditions when reading JSON file
-                    with comm_hub.lock:
-                        data = comm_hub._read_data()
+                    # (Locking is now handled internally by _read_data)
+                    data = comm_hub._read_data()
 
                     # Update all data
                     old_comm_count = len(self.communications)
@@ -1112,11 +1112,10 @@ class CollaborationDashboard:
 
             # Clear file locks in communication file if it exists
             if os.path.exists(comm_hub.communication_file):
-                with comm_hub.lock:
-                    data = comm_hub._read_data()
-                    data["file_locks"] = {}
-                    with open(comm_hub.communication_file, 'w') as f:
-                        json.dump(data, f, indent=2)
+                data = comm_hub._read_data()
+                data["file_locks"] = {}
+                with open(comm_hub.communication_file, 'w') as f:
+                    json.dump(data, f, indent=2)
 
         except Exception as e:
             print(f"Clear agent file locks error: {e}")
@@ -1252,18 +1251,17 @@ class CollaborationDashboard:
 
                 # Reset communication file if it exists
                 if os.path.exists(comm_hub.communication_file):
-                    with comm_hub.lock:
-                        initial_data = {
-                            "communications": [],
-                            "status_updates": [],
-                            "file_locks": {},
-                            "integration_points": [],
-                            "file_lock_requests": [],
-                            "conflict_reports": [],
-                            "shared_context": {}
-                        }
-                        with open(comm_hub.communication_file, 'w') as f:
-                            json.dump(initial_data, f, indent=2)
+                    initial_data = {
+                        "communications": [],
+                        "status_updates": [],
+                        "file_locks": {},
+                        "integration_points": [],
+                        "file_lock_requests": [],
+                        "conflict_reports": [],
+                        "shared_context": {}
+                    }
+                    with open(comm_hub.communication_file, 'w') as f:
+                        json.dump(initial_data, f, indent=2)
 
                 # Clear all GUI displays
                 self.clear_all_displays()

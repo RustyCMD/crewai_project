@@ -348,7 +348,7 @@ def create_collaborative_tasks():
         - File access audit trails and logging
         - Real-time coordination with all development agents""",
         agent=file_lock_manager_agent,
-        async_execution=True
+        async_execution=False  # This fixes the validation error
     )
 
     return [frontend_task, backend_task, integration_task, qa_task, performance_task, file_lock_task]
