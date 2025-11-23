@@ -192,7 +192,8 @@ def create_collaborative_tasks():
         - Integration points clearly defined
         - Performance considerations documented
         - Code review feedback incorporated""",
-        agent=frontend_agent
+        agent=frontend_agent,
+        async_execution=True
     )
     
     # Backend Development Task  
@@ -225,7 +226,8 @@ def create_collaborative_tasks():
         - Communication logs with frontend team
         - Performance optimization notes
         - Testing interfaces provided""",
-        agent=backend_agent
+        agent=backend_agent,
+        async_execution=True
     )
     
     # Integration Coordination Task
@@ -257,7 +259,8 @@ def create_collaborative_tasks():
         - Dependency management system
         - Conflict resolution documentation
         - Integration test results""",
-        agent=integration_agent
+        agent=integration_agent,
+        async_execution=True
     )
 
     # Quality Assurance Task
@@ -285,7 +288,8 @@ def create_collaborative_tasks():
         - Real-time quality metrics
         - Bug reports and resolution tracking
         - Collaboration logs with development teams""",
-        agent=qa_agent
+        agent=qa_agent,
+        async_execution=True
     )
 
     # Performance Optimization Task
@@ -312,7 +316,8 @@ def create_collaborative_tasks():
         - Optimization recommendations
         - Performance metrics and trends
         - Collaboration logs with development teams""",
-        agent=performance_agent
+        agent=performance_agent,
+        async_execution=True
     )
 
     # File Lock Manager Task
@@ -342,7 +347,8 @@ def create_collaborative_tasks():
         - Conflict detection and resolution mechanisms
         - File access audit trails and logging
         - Real-time coordination with all development agents""",
-        agent=file_lock_manager_agent
+        agent=file_lock_manager_agent,
+        async_execution=True
     )
 
     return [frontend_task, backend_task, integration_task, qa_task, performance_task, file_lock_task]

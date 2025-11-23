@@ -91,15 +91,13 @@ def monitor_collaboration():
                         log_safe(logger, "info", f"   {agent}: {status}")
                 
                 # Check recent communications
-                # FIX: Use comm_hub.lock to prevent race conditions when reading JSON file
-                with comm_hub.lock:
-                    data = comm_hub._read_data()
-                    recent_comms = data["communications"][-5:]
-                    
-                    if recent_comms:
-                        log_safe(logger, "info", "[CHAT] Recent Communications:")
-                        for comm in recent_comms:
-                            log_safe(logger, "info", f"   {comm['from_agent']} -> {comm['to_agent']}: {comm['message'][:50]}...")
+                data = comm_hub._read_data()
+                recent_comms = data["communications"][-5:]
+                
+                if recent_comms:
+                    log_safe(logger, "info", "[CHAT] Recent Communications:")
+                    for comm in recent_comms:
+                        log_safe(logger, "info", f"   {comm['from_agent']} -> {comm['to_agent']}: {comm['message'][:50]}...")
 
                 # Check file locks
                 file_locks = data.get("file_locks", {})
@@ -120,6 +118,25 @@ def monitor_collaboration():
             log_safe(logger, "error", f"[ERROR] Monitoring error: {e}")
             time.sleep(10)
 
+def validate_environment():
+    """Validate that all required environment variables are set."""
+    required_vars = ['GEMINI_API_KEY']
+    missing_vars = []
+
+    for var in required_vars:
+        if not os.getenv(var) or os.getenv(var) == 'your_gemini_api_key_here':
+            missing_vars.append(var)
+
+    if missing_vars:
+        log_safe(logger, "error", "[ERROR] Missing required environment variables:")
+        for var in missing_vars:
+            log_safe(logger, "error", f"   - {var}")
+        log_safe(logger, "error", "Please update your .env file with the required API keys.")
+        log_safe(logger, "error", "See .env file for instructions on obtaining API keys.")
+        return False
+
+    return True
+
 def main():
     """Main function to run collaborative development"""
     
@@ -128,10 +145,8 @@ def main():
     log_safe(logger, "info", "[ROCKET] Initializing Advanced Collaborative CrewAI Development")
     log_safe(logger, "info", "=" * 60)
 
-    # Verify environment
-    if not os.getenv("GEMINI_API_KEY"):
-        log_safe(logger, "error", "[ERROR] GEMINI_API_KEY not found in environment variables")
-        log_safe(logger, "error", "Please set your Gemini API key in the .env file")
+    # Verify environment with robust validation
+    if not validate_environment():
         sys.exit(1)
 
     log_safe(logger, "info", "[OK] Environment verified")
@@ -152,6 +167,12 @@ def main():
     log_safe(logger, "info", "[CHAT] Inter-agent communication enabled")
     log_safe(logger, "info", "[REFRESH] Shared memory and context active")
     log_safe(logger, "info", "[LOCK] File locking and conflict resolution enabled")
+    
+    # Start monitoring in a separate daemon thread
+    import threading
+    monitor_thread = threading.Thread(target=monitor_collaboration, daemon=True)
+    monitor_thread.start()
+    log_safe(logger, "info", "[SEARCH] Live progress monitoring started")
     
     try:
         # Start the collaborative development

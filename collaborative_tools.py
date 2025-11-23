@@ -180,9 +180,7 @@ class IntegrationCoordinatorTool(BaseTool):
                 component = kwargs.get("component", "")
 
                 # Get all integration points
-                # FIX: Use comm_hub.lock to prevent race conditions when reading JSON file
-                with comm_hub.lock:
-                    data = comm_hub._read_data()
+                data = comm_hub._read_data()
                 
                 dependencies = [
                     point for point in data["integration_points"]
@@ -254,9 +252,7 @@ class ProjectStatusTool(BaseTool):
                 return result
                 
             elif action == "file_status":
-                # FIX: Use comm_hub.lock to prevent race conditions when reading JSON file
-                with comm_hub.lock:
-                    data = comm_hub._read_data()
+                data = comm_hub._read_data()
                 
                 if data["file_locks"]:
                     result = "🔒 Locked files:\n"
@@ -267,9 +263,7 @@ class ProjectStatusTool(BaseTool):
                     return "✅ No files currently locked"
                     
             elif action == "integration_status":
-                # FIX: Use comm_hub.lock to prevent race conditions when reading JSON file
-                with comm_hub.lock:
-                    data = comm_hub._read_data()
+                data = comm_hub._read_data()
                 
                 points = data["integration_points"]
                 if points:
