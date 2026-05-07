@@ -1,50 +1,40 @@
 # CrewAI Idle Game Development Requirements
 
-# Core CrewAI and AI dependencies
+# Core CrewAI / LLM
 crewai>=0.193.0
 crewai-tools>=0.73.0
-langchain-google-genai>=1.0.1
 google-generativeai>=0.3.2
 
-# Environment and configuration
+# Environment + config
 python-dotenv>=1.0.0
 
-# GUI and game development
-tkinter-tooltip>=2.0.0
-Pillow>=10.0.0
-pygame>=2.5.0
-
-# Data handling and serialization
-# CRITICAL: Use compatible pydantic version for chromadb
+# Pydantic / vector store (compatible ranges for chromadb)
 pydantic>=2.0.0,<3.0.0
 pydantic-settings>=2.0.0
-
-# ChromaDB with compatible version
 chromadb>=0.4.24,<0.6.0
 
-# Logging and utilities
-colorlog>=6.7.0
-rich>=13.0.0
+# File locking for the comms hub
+portalocker>=2.7.0
 
-# Testing framework
-pytest>=7.4.0
-pytest-cov>=4.1.0
-pytest-mock>=3.11.0
+# GUI / game runtime
+Pillow>=10.0.0
+pygame>=2.5.0
+tkinter-tooltip>=2.0.0
 
-# Build and packaging
+# Build / packaging
 pyinstaller>=5.13.0
 setuptools>=68.0.0
 wheel>=0.41.0
 
-# Development tools
-black>=23.0.0
-flake8>=6.0.0
-mypy>=1.5.0
-
-# Optional: Advanced features
+# Optional analytics / utils used by generated game
 numpy>=1.24.0
 matplotlib>=3.7.0
 requests>=2.31.0
 
-# File locking for multi-process coordination
-portalocker>=2.7.0
+# Dev tooling
+pytest>=7.4.0
+pytest-cov>=4.1.0
+pytest-mock>=3.11.0
+black>=23.0.0
+flake8>=6.0.0
+mypy>=1.5.0
